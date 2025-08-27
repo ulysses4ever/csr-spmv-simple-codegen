@@ -4,16 +4,6 @@
 #include <string.h>
 #include <assert.h>
 
-// Comparison function for doubles
-int compare_doubles(const void *a, const void *b) {
-    double arg1 = *(const double *)a;
-    double arg2 = *(const double *)b;
-
-    if (arg1 < arg2) return -1;
-    if (arg1 > arg2) return 1;
-    return 0;
-}
-
 void spmv_sparse(
         double *restrict y,
         const double *restrict csr_val,
@@ -51,7 +41,7 @@ int main(int argc, char *argv[]) {
     int *indices = (int*)malloc(nnz * sizeof(int));
     int *indptr = (int*)malloc((rows + 1) * sizeof(int));
     struct timespec t1, t2;
-    double times[ITERS];
+    double mytime;
     char c;
 
     // Read CSR matrix from file
@@ -126,18 +116,17 @@ int main(int argc, char *argv[]) {
     fclose(x_file);
     // done reading x vector
 
+    clock_gettime(CLOCK_MONOTONIC, &t1);
     for (int i=0; i<ITERS; i++) {
         memset(y, 0, sizeof(double)*rows);
 
-        clock_gettime(CLOCK_MONOTONIC, &t1);
         spmv_sparse(y, csr_val, indices, indptr, x, rows);
-        clock_gettime(CLOCK_MONOTONIC, &t2);
 
-        times[i] = (t2.tv_sec - t1.tv_sec) * 1e9 + (t2.tv_nsec - t1.tv_nsec);
     }
+    clock_gettime(CLOCK_MONOTONIC, &t2);
+    mytime = (t2.tv_sec - t1.tv_sec) * 1e9 + (t2.tv_nsec - t1.tv_nsec);
 
-    qsort(times, ITERS, sizeof(double), compare_doubles);
-    printf("Time: %.2f ms\n", times[ITERS/2]);
+    printf("Time: %.2f ms\n", mytime);
 
     // Print result vector y to avoid the compiler optimizing away the computation
     for (int i=0; i<rows; i++) {
