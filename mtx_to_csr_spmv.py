@@ -82,7 +82,7 @@ def read_csr_file(filepath):
 def compile_c_program(c_filename, executable_name="spmv"):
     """Compile the C program using the flags from consts.py."""
     try:
-        compile_cmd = ["gcc"] + CFLAGS + ["-o", executable_name, c_filename]
+        compile_cmd = ["g++"] + CFLAGS + ["-o", executable_name, c_filename]
         
         print(f"Compiling C program...")
         print(f"Command: {' '.join(compile_cmd)}")
@@ -106,19 +106,19 @@ def execute_spmv_program(executable_name, params):
         print(f"Executable: ./{executable_name}, params: {params}")
         
         result = subprocess.run([f"./{executable_name}"] + params,
-                                capture_output=True, text=True, check=True)
+                                capture_output=False, text=True, check=True)
         
         print(f"✓ Execution successful!")
         
         # Extract timing information from output
-        timing_info = extract_timing(result.stdout)
-        if timing_info:
-            print("\n" + "=" * 60)
-            print("TIMING RESULTS")
-            print("=" * 60)
-            print(f"Time: {timing_info:.6f} ns")
-            print("=" * 60)
-            return timing_info
+        # timing_info = extract_timing(result.stdout)
+        # if timing_info:
+        #     print("\n" + "=" * 60)
+        #     print("TIMING RESULTS")
+        #     print("=" * 60)
+        #     print(f"Time: {timing_info:.6f} ns")
+        #     print("=" * 60)
+        #     return timing_info
         return None
     except subprocess.CalledProcessError as e:
         print(f"✗ Execution failed:")
@@ -341,9 +341,9 @@ if __name__ == "__main__":
     timing_results = []
     
     # Compile the C program early (we don't need to recompile for each CSR file anymore)
-    c_filename = "spmv_generic.c"
+    c_filename = "spmv_generic.cpp"
     if not compile_c_program(c_filename, "spmv"):
-        print(f"Skipping execution for {csr_filepath} due to compilation failure.")
+        print(f"ERROR: compilation failure for {c_filename}.")
         sys.exit(1)
 
     # Process foo.csr first (100%)
@@ -351,16 +351,16 @@ if __name__ == "__main__":
         process_csr_file("foo.csr") or sys.exit(1)
     
     # Process reduced CSR files
-    csr_files = glob.glob("foo_reduced_*pct.csr")
-    if not csr_files:
-        print("No foo_reduced_*pct.csr files found!")
-        sys.exit(1)
-    for csr_file in csr_files:
-        process_csr_file(csr_file) or sys.exit(1)
-    
+    # csr_files = glob.glob("foo_reduced_*pct.csr")
+    # if not csr_files:
+    #     print("No foo_reduced_*pct.csr files found!")
+    #     sys.exit(1)
+    # for csr_file in csr_files:
+    #     process_csr_file(csr_file) or sys.exit(1)
+
     # Write results to CSV
-    if timing_results:
-        write_timing_results_to_csv()
-    else:
-        print("No timing results collected!")
-        sys.exit(1)
+    # if timing_results:
+    #     write_timing_results_to_csv()
+    # else:
+    #     print("No timing results collected!")
+    #     sys.exit(1)

@@ -1,16 +1,20 @@
+#define ANKERL_NANOBENCH_IMPLEMENT
+#include "nanobench.h"
+
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 
+
 void spmv_sparse(
-        double *restrict y,
-        const double *restrict csr_val,
-        const int *restrict indices,
-        const int *restrict indptr,
-        const double *restrict x,
-        const int rpntr_size) {
+              double *__restrict__ y,
+        const double *__restrict__ csr_val,
+        const int      *__restrict__ indices,
+        const int      *__restrict__ indptr,
+        const double *__restrict__ x,
+        const int                    rpntr_size) {
     for (int i = 0; i < rpntr_size; i++) {
         int row_start = indptr[i];
         int row_end = indptr[i + 1];
@@ -116,20 +120,31 @@ int main(int argc, char *argv[]) {
     fclose(x_file);
     // done reading x vector
 
-    clock_gettime(CLOCK_MONOTONIC, &t1);
-    for (int i=0; i<ITERS; i++) {
-        memset(y, 0, sizeof(double)*rows);
+    // clock_gettime(CLOCK_MONOTONIC, &t1);
+    // for (int i=0; i<ITERS; i++) {
 
-        spmv_sparse(y, csr_val, indices, indptr, x, rows);
+            memset(y, 0, sizeof(double)*rows);
+        ankerl::nanobench::Bench().run("spmv", [&] {
 
-    }
-    clock_gettime(CLOCK_MONOTONIC, &t2);
-    mytime = (t2.tv_sec - t1.tv_sec) * 1e9 + (t2.tv_nsec - t1.tv_nsec);
+            for (int i = 0; i < rows; i++) {
+                int row_start = indptr[i];
+                int row_end = indptr[i + 1];
+                for (int j = row_start; j < row_end; j++) {
+                    y[i] += csr_val[j] * x[indices[j]];
+                }
+            }
+            ankerl::nanobench::doNotOptimizeAway(y);
 
-    printf("Time: %.2f ms\n", mytime);
+        });
 
-    // Print result vector y to avoid the compiler optimizing away the computation
-    for (int i=0; i<rows; i++) {
-        printf("%.2f\n", y[i]);
-    }
+    // }
+    // clock_gettime(CLOCK_MONOTONIC, &t2);
+    // mytime = (t2.tv_sec - t1.tv_sec) * 1e9 + (t2.tv_nsec - t1.tv_nsec);
+
+    // printf("Time: %.2f ms\n", mytime);
+
+    // // Print result vector y to avoid the compiler optimizing away the computation
+    // for (int i=0; i<rows; i++) {
+    //     printf("%.2f\n", y[i]);
+    // }
 }
