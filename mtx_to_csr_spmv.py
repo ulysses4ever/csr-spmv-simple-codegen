@@ -134,12 +134,14 @@ def extract_timing(output_text):
     """Extract timing information from the program output."""
     try:
         # Look for the median timing line in the output
-        for line in output_text.split('\n'):
-            if "Time:" in line:
-                # Extract the time value
-                time_str = line.split(":")[-1].strip().split()[0]
-                return float(time_str)
-        return None
+        line = output_text.split('\n')[0]
+        if "Time:" in line:
+            # Extract the time value
+            time_str = line.split(":")[-1].strip().split()[0]
+            return float(time_str)
+        else:
+            print("ERROR: Timing information not found in output.")
+            None
     except (ValueError, IndexError):
         return None
     
