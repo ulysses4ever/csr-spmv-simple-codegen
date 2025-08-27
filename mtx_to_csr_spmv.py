@@ -302,22 +302,15 @@ def process_csr_file(csr_filepath):
     #     nnz=nnz,
     #     output_filename="spmv.c"
     # )
-    c_filename = "spmv_generic.c"
-
-    # Compile C program
-    if c_filename and compile_c_program(c_filename, "spmv"):
-        # Execute SpMV program and get timing
-        timing = execute_spmv_program("spmv", stringify([rows, cols, nnz, csr_filepath,
-                                               f"Generated_dense_tensors/generated_vector_{cols}.vector"]))
-        if timing is not None:
-            # Store result for CSV output
-            timing_results.append((percentage, timing))
-            return True
-        else:
-            print(f"Failed to get timing for {csr_filepath}")
-            return False
+    # Execute SpMV program and get timing
+    timing = execute_spmv_program("spmv", stringify([rows, cols, nnz, csr_filepath,
+                                            f"Generated_dense_tensors/generated_vector_{cols}.vector"]))
+    if timing is not None:
+        # Store result for CSV output
+        timing_results.append((percentage, timing))
+        return True
     else:
-        print(f"Skipping execution for {csr_filepath} due to compilation failure.")
+        print(f"Failed to get timing for {csr_filepath}")
         return False
 
 def write_timing_results_to_csv(output_filename="timing_results.csv"):
@@ -345,22 +338,23 @@ if __name__ == "__main__":
     # Clear previous results
     timing_results = []
     
+    # Compile the C program early (we don't need to recompile for each CSR file anymore)
+    c_filename = "spmv_generic.c"
+    if not compile_c_program(c_filename, "spmv"):
+        print(f"Skipping execution for {csr_filepath} due to compilation failure.")
+        sys.exit(1)
+
     # Process foo.csr first (100%)
     if os.path.exists("foo.csr"):
         process_csr_file("foo.csr") or sys.exit(1)
     
     # Process reduced CSR files
     csr_files = glob.glob("foo_reduced_*pct.csr")
-    
     if not csr_files:
         print("No foo_reduced_*pct.csr files found!")
-        if not timing_results:
-            print("No timing results to write!")
-            sys.exit(1)
-    else:
-        # Process each reduced CSR file
-        for csr_file in csr_files:
-            process_csr_file(csr_file) or sys.exit(1)
+        sys.exit(1)
+    for csr_file in csr_files:
+        process_csr_file(csr_file) or sys.exit(1)
     
     # Write results to CSV
     if timing_results:
