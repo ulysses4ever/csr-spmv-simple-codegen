@@ -20,6 +20,8 @@ void spmv_sparse(
     }
 }
 
+const int ITERS = 100;
+
 int main(int argc, char *argv[]) {
 
     // Parse command line arguments
@@ -39,34 +41,33 @@ int main(int argc, char *argv[]) {
     int *indices = (int*)malloc(nnz * sizeof(int));
     int *indptr = (int*)malloc((rows + 1) * sizeof(int));
     struct timespec t1, t2;
-    double times[100];
-    for (int i=0; i<100; i++) {
-        FILE *file1 = fopen(csr_filename, "r");
-        if (file1 == NULL) {
-            perror("Error opening file1");
+    double times[ITERS];
+
+    for (int i=0; i<ITERS; i++) {
+        FILE *csr_file = fopen(csr_filename, "r");
+        if (csr_file == NULL) {
+            perror("Error opening csr_file");
             exit(EXIT_FAILURE);
         }
-        FILE *file2 = fopen(vector_filename, "r");
-        if (file2 == NULL) {
-            perror("Error opening file2");
+        FILE *x_file = fopen(vector_filename, "r");
+        if (x_file == NULL) {
+            perror("Error opening x_file");
             exit(EXIT_FAILURE);
         }
+
         memset(y, 0, sizeof(double)*rows);
-        memset(x, 0, sizeof(double)*cols);
-        memset(csr_val, 0, sizeof(double)*nnz);
-        memset(indices, 0, sizeof(int)*nnz);
-        memset(indptr, 0, sizeof(int)*(rows + 1));
         char c;
+
         int x_size=0, val_size=0;
-        assert(fscanf(file1, "indptr=[%c", &c) == 1);
+        assert(fscanf(csr_file, "indptr=[%c", &c) == 1);
         if (c != ']') {
-            ungetc(c, file1);
-            assert(fscanf(file1, "%d", &indptr[val_size]) == 1);
+            ungetc(c, csr_file);
+            assert(fscanf(csr_file, "%d", &indptr[val_size]) == 1);
             val_size++;
             while (1) {
-                assert(fscanf(file1, "%c", &c) == 1);
+                assert(fscanf(csr_file, "%c", &c) == 1);
                 if (c == ',') {
-                    assert(fscanf(file1, "%d", &indptr[val_size]) == 1);
+                    assert(fscanf(csr_file, "%d", &indptr[val_size]) == 1);
                     val_size++;
                 } else if (c == ']') {
                     break;
@@ -75,14 +76,14 @@ int main(int argc, char *argv[]) {
                 }
             }
         }
-        assert(fscanf(file1, "%c", &c) == 1 && c == '\n');
+        assert(fscanf(csr_file, "%c", &c) == 1 && c == '\n');
         val_size=0;
-        assert(fscanf(file1, "indices=[%d", &indices[val_size]) == 1.0);
+        assert(fscanf(csr_file, "indices=[%d", &indices[val_size]) == 1.0);
         val_size++;
         while (1) {
-            assert(fscanf(file1, "%c", &c) == 1);
+            assert(fscanf(csr_file, "%c", &c) == 1);
             if (c == ',') {
-                assert(fscanf(file1, "%d", &indices[val_size]) == 1.0);
+                assert(fscanf(csr_file, "%d", &indices[val_size]) == 1.0);
                 val_size++;
             } else if (c == ']') {
                 break;
@@ -90,15 +91,15 @@ int main(int argc, char *argv[]) {
                 assert(0);
             }
         }
-        if(fscanf(file1, "%c", &c));
+        if(fscanf(csr_file, "%c", &c));
         assert(c=='\n');
         val_size=0;
-        assert(fscanf(file1, "data=[%lf", &csr_val[val_size]) == 1.0);
+        assert(fscanf(csr_file, "data=[%lf", &csr_val[val_size]) == 1.0);
         val_size++;
         while (1) {
-            assert(fscanf(file1, "%c", &c) == 1);
+            assert(fscanf(csr_file, "%c", &c) == 1);
             if (c == ',') {
-                assert(fscanf(file1, "%lf", &csr_val[val_size]) == 1.0);
+                assert(fscanf(csr_file, "%lf", &csr_val[val_size]) == 1.0);
                 val_size++;
             } else if (c == ']') {
                 break;
@@ -106,19 +107,19 @@ int main(int argc, char *argv[]) {
                 assert(0);
             }
         }
-        fclose(file1);
-        while (x_size < cols && fscanf(file2, "%lf,", &x[x_size]) == 1) {
+        fclose(csr_file);
+        while (x_size < cols && fscanf(x_file, "%lf,", &x[x_size]) == 1) {
             x_size++;
         }
-        fclose(file2);
+        fclose(x_file);
         clock_gettime(CLOCK_MONOTONIC, &t1);
         spmv_sparse(y, csr_val, indices, indptr, x, rows);
         clock_gettime(CLOCK_MONOTONIC, &t2);
         times[i] = (t2.tv_sec - t1.tv_sec) * 1e9 + (t2.tv_nsec - t1.tv_nsec);
     }
-    printf("Time: %.2f ms\\n", times[50]);
+    printf("Time: %.2f ms\n", times[50]);
     for (int i=0; i<rows; i++) {
-        printf("%.2f\\n", y[i]);
+        printf("%.2f\n", y[i]);
     }
     free(y);
     free(x);
