@@ -52,80 +52,82 @@ int main(int argc, char *argv[]) {
     int *indptr = (int*)malloc((rows + 1) * sizeof(int));
     struct timespec t1, t2;
     double times[ITERS];
+    char c;
+
+    // Read CSR matrix from file
+    FILE *csr_file = fopen(csr_filename, "r");
+    if (csr_file == NULL) {
+        perror("Error opening csr_file");
+        exit(EXIT_FAILURE);
+    }
+
+    int x_size=0, val_size=0;
+    assert(fscanf(csr_file, "indptr=[%c", &c) == 1);
+    if (c != ']') {
+        ungetc(c, csr_file);
+        assert(fscanf(csr_file, "%d", &indptr[val_size]) == 1);
+        val_size++;
+        while (1) {
+            assert(fscanf(csr_file, "%c", &c) == 1);
+            if (c == ',') {
+                assert(fscanf(csr_file, "%d", &indptr[val_size]) == 1);
+                val_size++;
+            } else if (c == ']') {
+                break;
+            } else {
+                assert(0);
+            }
+        }
+    }
+    assert(fscanf(csr_file, "%c", &c) == 1 && c == '\n');
+    val_size=0;
+    assert(fscanf(csr_file, "indices=[%d", &indices[val_size]) == 1.0);
+    val_size++;
+    while (1) {
+        assert(fscanf(csr_file, "%c", &c) == 1);
+        if (c == ',') {
+            assert(fscanf(csr_file, "%d", &indices[val_size]) == 1.0);
+            val_size++;
+        } else if (c == ']') {
+            break;
+        } else {
+            assert(0);
+        }
+    }
+    if(fscanf(csr_file, "%c", &c));
+    assert(c=='\n');
+    val_size=0;
+    assert(fscanf(csr_file, "data=[%lf", &csr_val[val_size]) == 1.0);
+    val_size++;
+    while (1) {
+        assert(fscanf(csr_file, "%c", &c) == 1);
+        if (c == ',') {
+            assert(fscanf(csr_file, "%lf", &csr_val[val_size]) == 1.0);
+            val_size++;
+        } else if (c == ']') {
+            break;
+        } else {
+            assert(0);
+        }
+    }
+    fclose(csr_file);
+    // done reading csr matrix
+
+    // Read x vector from file
+    FILE *x_file = fopen(vector_filename, "r");
+    if (x_file == NULL) {
+        perror("Error opening x_file");
+        exit(EXIT_FAILURE);
+    }
+
+    while (x_size < cols && fscanf(x_file, "%lf,", &x[x_size]) == 1) {
+        x_size++;
+    }
+    fclose(x_file);
+    // done reading x vector
 
     for (int i=0; i<ITERS; i++) {
-        FILE *csr_file = fopen(csr_filename, "r");
-        if (csr_file == NULL) {
-            perror("Error opening csr_file");
-            exit(EXIT_FAILURE);
-        }
-        FILE *x_file = fopen(vector_filename, "r");
-        if (x_file == NULL) {
-            perror("Error opening x_file");
-            exit(EXIT_FAILURE);
-        }
-
         memset(y, 0, sizeof(double)*rows);
-        char c;
-
-        // Read CSR matrix from file
-        int x_size=0, val_size=0;
-        assert(fscanf(csr_file, "indptr=[%c", &c) == 1);
-        if (c != ']') {
-            ungetc(c, csr_file);
-            assert(fscanf(csr_file, "%d", &indptr[val_size]) == 1);
-            val_size++;
-            while (1) {
-                assert(fscanf(csr_file, "%c", &c) == 1);
-                if (c == ',') {
-                    assert(fscanf(csr_file, "%d", &indptr[val_size]) == 1);
-                    val_size++;
-                } else if (c == ']') {
-                    break;
-                } else {
-                    assert(0);
-                }
-            }
-        }
-        assert(fscanf(csr_file, "%c", &c) == 1 && c == '\n');
-        val_size=0;
-        assert(fscanf(csr_file, "indices=[%d", &indices[val_size]) == 1.0);
-        val_size++;
-        while (1) {
-            assert(fscanf(csr_file, "%c", &c) == 1);
-            if (c == ',') {
-                assert(fscanf(csr_file, "%d", &indices[val_size]) == 1.0);
-                val_size++;
-            } else if (c == ']') {
-                break;
-            } else {
-                assert(0);
-            }
-        }
-        if(fscanf(csr_file, "%c", &c));
-        assert(c=='\n');
-        val_size=0;
-        assert(fscanf(csr_file, "data=[%lf", &csr_val[val_size]) == 1.0);
-        val_size++;
-        while (1) {
-            assert(fscanf(csr_file, "%c", &c) == 1);
-            if (c == ',') {
-                assert(fscanf(csr_file, "%lf", &csr_val[val_size]) == 1.0);
-                val_size++;
-            } else if (c == ']') {
-                break;
-            } else {
-                assert(0);
-            }
-        }
-        fclose(csr_file);
-        // done reading csr matrix
-
-        // Read x vector from file
-        while (x_size < cols && fscanf(x_file, "%lf,", &x[x_size]) == 1) {
-            x_size++;
-        }
-        fclose(x_file);
 
         clock_gettime(CLOCK_MONOTONIC, &t1);
         spmv_sparse(y, csr_val, indices, indptr, x, rows);
