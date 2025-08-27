@@ -14,6 +14,10 @@ CFLAGS = ["-O3", "-march=native", "-funroll-all-loops", "-mprefer-vector-width=5
 # Global variable to store timing results
 timing_results = []
 
+def stringify(lst):
+    """Convert a list of things to a list of strings."""
+    return list(map(str, lst))
+
 def write_dense_vector(val: float, size: int):
     """Inline version of write_dense_vector function."""
     filename = f"generated_vector_{size}.vector"
@@ -83,7 +87,7 @@ def compile_c_program(c_filename, executable_name="spmv"):
         print(f"Compiling C program...")
         print(f"Command: {' '.join(compile_cmd)}")
         
-        subprocess.run(compile_cmd, capture_output=True, text=True, check=True)
+        subprocess.run(compile_cmd, capture_output=False, text=True, check=True)
         
         print(f"✓ Compilation successful!")
         return True
@@ -95,13 +99,14 @@ def compile_c_program(c_filename, executable_name="spmv"):
         print(f"✗ Error: gcc compiler not found")
         return False
 
-def execute_spmv_program(executable_name="spmv"):
+def execute_spmv_program(executable_name, params):
     """Execute the compiled SpMV program and extract timing information."""
     try:
         print(f"\nExecuting SpMV program...")
-        print(f"Command: ./{executable_name}")
+        print(f"Executable: ./{executable_name}, params: {params}")
         
-        result = subprocess.run([f"./{executable_name}"], capture_output=True, text=True, check=True)
+        result = subprocess.run([f"./{executable_name}"] + params,
+                                capture_output=True, text=True, check=True)
         
         print(f"✓ Execution successful!")
         
@@ -289,19 +294,21 @@ def process_csr_file(csr_filepath):
     write_dense_vector(1.0, cols)
     
     # Generate C program
-    c_filename = generate_c_program(
-        csr_filepath,
-        f"generated_vector_{cols}.vector",
-        rows=rows,
-        cols=cols,
-        nnz=nnz,
-        output_filename="spmv.c"
-    )
-    
+    # c_filename = generate_c_program(
+    #     csr_filepath,
+    #     f"generated_vector_{cols}.vector",
+    #     rows=rows,
+    #     cols=cols,
+    #     nnz=nnz,
+    #     output_filename="spmv.c"
+    # )
+    c_filename = "spmv_generic.c"
+
     # Compile C program
     if c_filename and compile_c_program(c_filename, "spmv"):
         # Execute SpMV program and get timing
-        timing = execute_spmv_program("spmv")
+        timing = execute_spmv_program("spmv", stringify([rows, cols, nnz, csr_filepath,
+                                               f"Generated_dense_tensors/generated_vector_{cols}.vector"]))
         if timing is not None:
             # Store result for CSV output
             timing_results.append((percentage, timing))
@@ -340,7 +347,7 @@ if __name__ == "__main__":
     
     # Process foo.csr first (100%)
     if os.path.exists("foo.csr"):
-        process_csr_file("foo.csr")
+        process_csr_file("foo.csr") or sys.exit(1)
     
     # Process reduced CSR files
     csr_files = glob.glob("foo_reduced_*pct.csr")
@@ -353,7 +360,7 @@ if __name__ == "__main__":
     else:
         # Process each reduced CSR file
         for csr_file in csr_files:
-            process_csr_file(csr_file)
+            process_csr_file(csr_file) or sys.exit(1)
     
     # Write results to CSV
     if timing_results:
@@ -361,4 +368,3 @@ if __name__ == "__main__":
     else:
         print("No timing results collected!")
         sys.exit(1)
- 
