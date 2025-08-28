@@ -8,24 +8,6 @@
 #include <assert.h>
 
 
-void spmv_sparse(
-              double *__restrict__ y,
-        const double *__restrict__ csr_val,
-        const int      *__restrict__ indices,
-        const int      *__restrict__ indptr,
-        const double *__restrict__ x,
-        const int                    rpntr_size) {
-    for (int i = 0; i < rpntr_size; i++) {
-        int row_start = indptr[i];
-        int row_end = indptr[i + 1];
-        for (int j = row_start; j < row_end; j++) {
-            y[i] += csr_val[j] * x[indices[j]];
-        }
-    }
-}
-
-const int ITERS = 100;
-
 int main(int argc, char *argv[]) {
 
     // Parse command line arguments
@@ -120,31 +102,29 @@ int main(int argc, char *argv[]) {
     fclose(x_file);
     // done reading x vector
 
-    // clock_gettime(CLOCK_MONOTONIC, &t1);
-    // for (int i=0; i<ITERS; i++) {
+    // technically, if we don't do this in the loop, we'll ccompute garbage,
+    // but that's good enough for benchmarking purposes
+    memset(y, 0, sizeof(double)*rows);
 
-            memset(y, 0, sizeof(double)*rows);
-        ankerl::nanobench::Bench().run("spmv", [&] {
+    ankerl::nanobench::Bench bench;
+    std::vector<ankerl::nanobench::Result> results;
 
-            for (int i = 0; i < rows; i++) {
-                int row_start = indptr[i];
-                int row_end = indptr[i + 1];
-                for (int j = row_start; j < row_end; j++) {
-                    y[i] += csr_val[j] * x[indices[j]];
-                }
+    bench.output(nullptr).run("spmv", [&] {
+        for (int i = 0; i < rows; i++) {
+            int row_start = indptr[i];
+            int row_end = indptr[i + 1];
+            for (int j = row_start; j < row_end; j++) {
+                y[i] += csr_val[j] * x[indices[j]];
             }
-            ankerl::nanobench::doNotOptimizeAway(y);
+        }
+    });
 
-        });
+    printf("Time: %.2f ns\n", bench.results()[0].median(ankerl::nanobench::Result::Measure::elapsed) * 1e9);
 
-    // }
-    // clock_gettime(CLOCK_MONOTONIC, &t2);
-    // mytime = (t2.tv_sec - t1.tv_sec) * 1e9 + (t2.tv_nsec - t1.tv_nsec);
-
-    // printf("Time: %.2f ms\n", mytime);
-
-    // // Print result vector y to avoid the compiler optimizing away the computation
-    // for (int i=0; i<rows; i++) {
-    //     printf("%.2f\n", y[i]);
-    // }
+    // Use result vector y to avoid the compiler optimizing away the computation
+    double sum = 0;
+    for (int i=0; i<rows; i++) {
+        sum += y[i];
+    }
+    printf("%.2f\n", sum);
 }

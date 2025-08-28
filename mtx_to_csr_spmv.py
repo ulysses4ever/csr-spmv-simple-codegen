@@ -106,19 +106,19 @@ def execute_spmv_program(executable_name, params):
         print(f"Executable: ./{executable_name}, params: {params}")
         
         result = subprocess.run([f"./{executable_name}"] + params,
-                                capture_output=False, text=True, check=True)
+                                capture_output=True, text=True, check=True)
         
         print(f"✓ Execution successful!")
         
         # Extract timing information from output
-        # timing_info = extract_timing(result.stdout)
-        # if timing_info:
-        #     print("\n" + "=" * 60)
-        #     print("TIMING RESULTS")
-        #     print("=" * 60)
-        #     print(f"Time: {timing_info:.6f} ns")
-        #     print("=" * 60)
-        #     return timing_info
+        timing_info = extract_timing(result.stdout)
+        if timing_info:
+            print("\n" + "=" * 60)
+            print("TIMING RESULTS")
+            print("=" * 60)
+            print(f"Time: {timing_info:.6f} ns")
+            print("=" * 60)
+            return timing_info
         return None
     except subprocess.CalledProcessError as e:
         print(f"✗ Execution failed:")
@@ -331,7 +331,7 @@ def write_timing_results_to_csv(output_filename="timing_results.csv"):
         print(f"\n✓ Timing results written to {output_filename}")
         print(f"Results:")
         for percentage, time in sorted_results:
-            print(f"  {percentage}%: {time:.6f} ns")
+            print(f"  {percentage:3d}%: {time:.6f} ns")
             
     except Exception as e:
         print(f"Error writing CSV file: {e}")
@@ -351,16 +351,16 @@ if __name__ == "__main__":
         process_csr_file("foo.csr") or sys.exit(1)
     
     # Process reduced CSR files
-    # csr_files = glob.glob("foo_reduced_*pct.csr")
-    # if not csr_files:
-    #     print("No foo_reduced_*pct.csr files found!")
-    #     sys.exit(1)
-    # for csr_file in csr_files:
-    #     process_csr_file(csr_file) or sys.exit(1)
+    csr_files = glob.glob("foo_reduced_*pct.csr")
+    if not csr_files:
+        print("No foo_reduced_*pct.csr files found!")
+        sys.exit(1)
+    for csr_file in csr_files:
+        process_csr_file(csr_file) or sys.exit(1)
 
     # Write results to CSV
-    # if timing_results:
-    #     write_timing_results_to_csv()
-    # else:
-    #     print("No timing results collected!")
-    #     sys.exit(1)
+    if timing_results:
+        write_timing_results_to_csv()
+    else:
+        print("No timing results collected!")
+        sys.exit(1)
